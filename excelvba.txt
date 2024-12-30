@@ -236,4 +236,63 @@ Loop
 End Sub
 
 
+目的是逐行扫描某一列，直到找到空白单元格或达到工作表最大行数为止
 
+Sub 遍历行找到工作表最大行数或空白单元格()
+    Dim i As Long
+    i = 2 ' 从第二行开始
+    Do While Range("A" & i) <> "" And i < ActiveSheet.Rows.Count '确保 i 不会超过当前工作表的最大行数（通常为 1,048,576）
+        ' 在这里添加需要对每行执行的操作
+        Debug.Print "第" & i & "行的值是：" & Range("A" & i).Value
+        i = i + 1 ' 增加行号，避免死循环
+    Loop
+    MsgBox "遍历完成！共扫描到第" & (i - 1) & "行。", vbInformation
+End Sub
+
+
+确定当前工作表中最后一行的行号，并通过消息框显示出来
+
+Sub 确定表格最后一行通过消息框表示()
+ Dim r1, i
+ '当前工作表所使用的区域
+'返回当前活动工作表中实际使用的单元格区域（包括所有非空单元格）
+ Set r1 = ActiveSheet.UsedRange
+ 'Row从第几行开始+总计多少行-1就得到最后一行的位置了
+ i = r1.Row + r1.Rows.Count - 1
+ MsgBox "最后一行是" & i
+End Sub
+
+
+
+
+Sub 在当前工作表中将某列的所有行填充为一个固定值()
+Dim i, r1
+'返回当前活动工作表的已使用区域（包含所有非空单元格）
+Set r1 = ActiveSheet.UsedRange
+For i = 1 To r1.Row + r1.Rows.Count - 1
+ Range("G" & i) = 520
+Next
+End Sub
+
+
+Sub 在当前工作表中将某列的所有行填充为一个固定值()
+    Dim i As Long
+    Dim r1 As Range
+
+    ' 获取当前使用区域
+'如果工作表中只有一个单元格被“使用”，可能是空白的
+'检查使用区域的第一个单元格是否为空
+    If ActiveSheet.UsedRange.Cells.Count = 1 And IsEmpty(ActiveSheet.UsedRange.Cells(1)) Then
+        MsgBox "当前工作表为空！", vbExclamation
+        Exit Sub
+    End If
+
+    Set r1 = ActiveSheet.UsedRange
+
+    ' 从使用区域的起始行到最后一行
+    For i = r1.Row To r1.Row + r1.Rows.Count - 1
+        Range("G" & i) = 520
+    Next
+
+    MsgBox "填充完成！", vbInformation
+End Sub
