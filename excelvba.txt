@@ -15,29 +15,225 @@ Sub 从一个指定的文本文件中读取每一行数据_如果某行以孙兴
  Close #1
 End Sub
 
+
 Sub 用户自己选择文件()
     Dim filePath As String
     Dim i As Long
     Dim lineText As String
-
+'    弹出文件选择对话框，用户选择要打开的文本文件。过滤器限定为 .txt 文件
     ' 用户选择文件路径
     filePath = Application.GetOpenFilename("Text Files (*.txt), *.txt")
+'如果用户取消了文件选择（返回“False”），则退出宏
     If filePath = "False" Then Exit Sub
-
+'    启用错误处理机制，若发生错误会跳转到 ErrorHandler 标签处。
     On Error GoTo ErrorHandler
+'    以只读模式打开用户选择的文本文件，并将文件句柄分配给 #1。
     Open filePath For Input As #1
     i = 1
-
     ' 读取文件内容
+    '    使用 EOF(1) 来判断文件是否读取到末尾。如果未到达末尾，则继续读取
     Do While Not EOF(1)
+'        读取文件中的一行文本并存储到 lineText 变量中
         Line Input #1, lineText
+
         ' 筛选以 "孙兴华" 开头的行
         If Left(lineText, 3) = "孙兴华" Then
+'        将符合条件的行写入 Excel 中，从第 i 行开始
             Range("A" & i) = lineText
             i = i + 1
         End If
     Loop
 
     Close #1
+'    弹出提示框，告知用户文件处理已完成
     MsgBox "文件内容已处理完成！", vbInformation
     Exit Sub
+
+ErrorHandler:
+    MsgBox "文件操作出错，请检查路径或内容格式。", vbExclamation
+    Close #1
+End Sub
+
+
+'这段代码会遍历工作簿中的所有工作表，对于每张工作表，从第 2 行开始读取 A 列和 B 列的数据
+'并将每一行的数据（A 列和 B 列的内容以逗号分隔）写入指定的文本文件 李小龙.txt
+
+Sub 多张工作表同时写入一个文件()
+Dim i, s1
+Open "D:\BaiduSyncdisk\跟着孙兴华学习Excel VBA\课件\14.使用VBA批量操作TXT和Excel文件\李小龙.txt" For Output As #1
+For Each s1 In Sheets
+ '每张工作表从第2行开始扫描每一行
+ i = 2
+ Do While s1.Range("A" & i) <> ""
+ Print #1, s1.Range("A" & i); ","; s1.Range("B" & i)
+ i = i + 1
+ Loop
+Next
+Close #1
+End Sub
+
+
+
+'这段代码首先从 姓名.txt 和 功夫.txt 两个文本文件中读取内容，并依次将每行内容写入 Excel 的 A 列。
+'然后，将 Excel 中 A 列的内容写入一个新的文本文件 合并.txt。
+'最后，关闭所有文件。
+
+Sub 多文件的读取与写入()
+Dim i
+Open "C:\Users\孙艺航\Desktop\多文件打开写入\姓名.txt" For Input As #1
+Open "C:\Users\孙艺航\Desktop\多文件打开写入\功夫.txt" For Input As #2
+i = 1
+Do While Not EOF(1) Or Not EOF(2)
+' 如果文件 1 (#1) 尚未读取完毕
+ If Not EOF(1) Then
+ Line Input #1, s
+ Range("A" & i) = s
+ i = i + 1
+ End If
+' 如果文件 2 (#2) 尚未读取完毕
+ If Not EOF(2) Then
+ Line Input #2, s
+ Range("A" & i) = s
+ i = i + 1
+ End If
+Loop
+Close #1: Close #2
+Open "C:\Users\孙艺航\Desktop\多文件打开写入\合并.txt" For Output As #3
+i = 1
+Do While Range("A" & i) <> ""
+'将 A 列中的当前行内容写入 合并.txt 文件
+ Print #3, Range("A" & i)
+ i = i + 1
+Loop
+'关闭新创建的文本文件 合并.txt
+Close #3
+End Sub
+
+
+Sub 遍历所有txt文件()
+Dim 文件
+'运行Dir函数得到第1个文件的名字
+文件 = Dir("C:\Users\孙艺航\Desktop\多文件打开写入\")
+'如果读到的文件不是空字符串，就证明这是一个有效文件
+Do While 文件 <> ""
+ '这里可以对文件进行打开和读取操作
+ 文件 = Dir '再次运行Dir就读到下一个文件名
+Loop
+End Sub
+
+'目的是批量读取一个文件夹中的多个 .txt 文件，并将每个文件的内容按行读取，分割并写入到 Excel 工作表中
+'每个文件的内容会写入一个新的工作表，并且每个工作表的名称会使用文件名（不包含路径部分）
+
+Sub 批量读取一个文件夹中的多个txt文件()
+Dim 文件
+'运行Dir函数得到第1个文件的名字
+文件 = Dir("C:\Users\孙艺航\Desktop\txt\")
+'如果读到的文件不是空字符串，就证明这是一个有效文件
+Do While 文件 <> ""
+ '这里可以对文件进行打开和读取操作
+ Call 读取多个txt文件("C:\Users\孙艺航\Desktop\txt\" & 文件)
+ 文件 = Dir '再次运行Dir就读到下一个文件名
+Loop
+End Sub
+'读取【带路径的文件名】变量中存储的文件
+'取出每行国家名称和确诊人数，写入工作表
+Sub 读取多个txt文件(带路径的文件名)
+Dim i, w1, x
+Set w1 = Worksheets.Add
+'设置新工作表的名称为文件名（不包含路径）
+'InStrRev 函数用于查找文件路径中的最后一个反斜杠（\）
+'然后使用 Mid 函数提取文件名部分
+w1.Name = Mid(带路径的文件名, InStrRev(带路径的文件名, "\") + 1)
+Open 带路径的文件名 For Input As #1
+i = 1
+Do While Not EOF(1)
+ Line Input #1, x
+w1.Range("A" & i) = Split(x, ",")(0)
+ w1.Range("B" & i) = Split(x, ",")(1)
+ w1.Range("C" & i) = Split(x, ",")(2)
+ i = i + 1
+Loop
+Close #1
+End Sub
+
+
+遍历指定文件夹下的所有 Excel 文件，并逐一打开、处理后关闭每个文件
+
+Sub 遍历文件夹下Excel文件()
+Dim w1
+文件 = Dir("C:\Users\孙艺航\Desktop\excel\")
+Do While 文件 <> ""
+'使用 Workbooks.Open 方法打开当前文件，并将其引用赋值给变量 w1
+ Set w1 = Workbooks.Open("C:\Users\孙艺航\Desktop\excel\" & 文件)
+ '此处可以处理当前打开的工作簿
+ 
+ w1.Close
+ 文件 = Dir
+Loop
+End Sub
+
+
+遍历指定文件夹下的所有 Excel 文件，并将每个文件中第一个工作表复制到当前运行代码的工作簿中，同时将复制的工作表重命名为源文件的文件名（不包括后缀）
+
+Sub 遍历文件夹下Excel文件()
+'暂时关闭屏幕更新
+Excel.Application.ScreenUpdating = False
+Dim w1
+文件 = Dir("C:\Users\孙艺航\Desktop\excel\")
+Do While 文件 <> ""
+ Set w1 = Workbooks.Open("C:\Users\孙艺航\Desktop\excel\" & 文件)
+ '打开文件并复制第1张表，放在我这个写代码的工作簿里，有几张表就在表后面粘贴
+ w1.Sheets(1).Copy after:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count)
+ '刚复制的这张表的表名就是w1那个变量的文件名（不要后缀）
+'使用 Split 函数按点分割文件名，并提取分割后的第一个部分（即文件名的主干部分）
+ ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count).Name = Split(w1.Name, ".")(0)
+ w1.Close
+ 文件 = Dir
+Loop
+Excel.Application.ScreenUpdating = True
+End Sub
+
+
+遍历指定文件夹中的所有 Excel 文件，并将每个文件的所有工作表复制到当前运行代码的工作簿中。复制的每个工作表都会被重新命名，格式为：文件名.工作表名
+Excel 工作表名称最大长度为 31 个字符。如果 文件名.工作表名 超过 31 个字符，代码会报错。
+
+Sub 遍历文件夹下Excel文件()
+Excel.Application.ScreenUpdating = False
+Dim w1
+文件 = Dir("C:\Users\孙艺航\Desktop\多表excel\")
+Do While 文件 <> ""
+ Set w1 = Workbooks.Open("C:\Users\孙艺航\Desktop\多表excel\" & 文件)
+ For Each s1 In w1.Sheets
+ '复制s1放到工作表最后面
+ s1.Copy after:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count)
+ '刚复制的这张表的表名就是w1那个变量的文件名（不要后缀）
+ ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count).Name = Split(w1.Name, ".")(0) & "." & s1.Name
+ Next
+ w1.Close
+ 文件 = Dir
+Loop
+Sheet1.Select
+Excel.Application.ScreenUpdating = True
+End Sub
+
+
+遍历指定文件夹下的所有文件，并筛选出以 .xlsx 或 .xls 为扩展名的 Excel 文件，对每个符合条件的文件进行操作
+
+Sub 遍历文件夹下Excel文件()
+Dim w1
+文件 = Dir("C:\Users\孙艺航\Desktop\excel\")
+Do While 文件 <> ""
+ 'LCase判断是否以xlsx或xls结尾的文件，英文要考虑大小写一致
+'LCase(...)：将字符转换为小写，确保文件扩展名判断不受大小写影响
+ If LCase(Right(文件, 5)) = ".xlsx" Or LCase(Right(文件, 4)) = ".xls" Then
+ Set w1 = Workbooks.Open("C:\Users\孙艺航\Desktop\excel" & 文件)
+ '此处可以处理当前打开的工作簿
+ 
+ w1.Close
+ End If
+ 文件 = Dir
+Loop
+End Sub
+
+
+
