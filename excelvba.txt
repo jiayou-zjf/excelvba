@@ -1,0 +1,43 @@
+Sub 从一个指定的文本文件中读取每一行数据_如果某行以孙兴华开头_写入Excel工作表中的单元格()
+ Dim i, j
+ Open "D:\BaiduSyncdisk\跟着孙兴华学习Excel VBA\课件\14.使用VBA批量操作TXT和Excel文件\孙兴华.txt" For Input As #1
+ i = 1
+ '代号1这个文件没有到达末尾时
+ Do While Not EOF(1)
+ '从1号文件中读取一行文本，把这行文本做为一个字符串保存到s变量中
+ Line Input #1, j
+ '进行判断，以孙兴华开头的写入单元格
+ If Left(j, 3) = "孙兴华" Then
+ Range("A" & i) = j
+ i = i + 1
+ End If
+ Loop
+ Close #1
+End Sub
+
+Sub 用户自己选择文件()
+    Dim filePath As String
+    Dim i As Long
+    Dim lineText As String
+
+    ' 用户选择文件路径
+    filePath = Application.GetOpenFilename("Text Files (*.txt), *.txt")
+    If filePath = "False" Then Exit Sub
+
+    On Error GoTo ErrorHandler
+    Open filePath For Input As #1
+    i = 1
+
+    ' 读取文件内容
+    Do While Not EOF(1)
+        Line Input #1, lineText
+        ' 筛选以 "孙兴华" 开头的行
+        If Left(lineText, 3) = "孙兴华" Then
+            Range("A" & i) = lineText
+            i = i + 1
+        End If
+    Loop
+
+    Close #1
+    MsgBox "文件内容已处理完成！", vbInformation
+    Exit Sub
