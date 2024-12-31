@@ -296,3 +296,240 @@ Sub 在当前工作表中将某列的所有行填充为一个固定值()
 
     MsgBox "填充完成！", vbInformation
 End Sub
+
+
+数组来操作 Excel 工作表的整个 A 列
+数据加载：从 Excel 的 A 列读取有数据的范围（如 A1:A100），加载到数组 arr
+数组操作：遍历 arr，将数组中的每个值改为 1。
+数据回写：将修改后的 arr 写回 Excel 的 A 列对应范围
+
+Sub 配合数组使用优化()
+    Dim arr As Variant, i As Long
+    Dim lastRow As Long
+    ' 找到 A 列最后一个非空单元格的行号
+    lastRow = Range("A" & Rows.Count).End(xlUp).Row
+    ' 加载有数据的部分到数组
+    arr = Range("A1:A" & lastRow).Value
+    ' 遍历数组并修改数据
+    For i = 1 To UBound(arr, 1)
+        arr(i, 1) = 1
+    Next
+    ' 写回修改后的数据
+    Range("A1:A" & lastRow).Value = arr
+    MsgBox "已经完成"
+End Sub
+
+
+定义源工作表和目标工作表（Sheet1 和 Sheet2）
+使用 .CurrentRegion 动态获取以 B2 为起始点的连续区域
+清空目标工作表中的所有内容，避免残留数据干扰
+将源区域的数据复制到目标工作表中，从 A1 单元格开始粘贴
+弹出提示框，告知用户操作完成
+
+Sub 单元格拷贝()
+    Dim wsSource As Worksheet
+    Dim wsTarget As Worksheet
+    Dim sourceRange As Range
+    Dim targetCell As Range
+
+    ' 定义源工作表和目标工作表
+    Set wsSource = ThisWorkbook.Sheets("Sheet1")
+    Set wsTarget = ThisWorkbook.Sheets("Sheet2")
+
+    ' 找到源数据范围
+    Set sourceRange = wsSource.Range("B2").CurrentRegion
+
+    ' 定义目标单元格
+    Set targetCell = wsTarget.Range("A1")
+
+    ' 清空目标工作表中的区域
+    wsTarget.Cells.Clear
+
+    ' 将数据从源复制到目标
+    sourceRange.Copy targetCell
+
+    MsgBox "数据已成功复制！", vbInformation
+End Sub
+
+
+Sub 单元格拷贝改进()
+    Dim targetSheet As Worksheet
+    Dim sourceRange As Range
+    Dim targetCell As Range
+
+    ' 设置源范围和目标位置
+'获取从 B2 开始的连续区域（即包含数据的矩形区域）
+    Set sourceRange = Range("B2").CurrentRegion
+'代码在执行过程中出错（例如 Sheet2 不存在），程序不会停止，而是继续执行下一行代码
+    On Error Resume Next
+'尝试设置目标工作表为当前工作簿
+    Set targetSheet = ThisWorkbook.Sheets("Sheet2")
+'关闭错误忽略模式，恢复默认的错误处理机制
+    On Error GoTo 0
+'判断 targetSheet 是否成功设置。如果目标工作表不存在，Set 操作失败，targetSheet 会被设置为 Nothing
+    If targetSheet Is Nothing Then
+        MsgBox "目标工作表不存在！", vbExclamation
+        Exit Sub
+    End If
+    Set targetCell = targetSheet.Range("A1")
+    
+    ' 复制并粘贴
+    sourceRange.Copy
+    With targetCell
+'确保列宽与源数据保持一致
+        .PasteSpecial xlPasteColumnWidths
+'粘贴源区域的全部内容，包括格式、公式、值
+        .PasteSpecial xlPasteAll
+    End With
+    
+    ' 清除复制模式
+    Application.CutCopyMode = False
+    MsgBox "数据复制完成！", vbInformation
+End Sub
+
+
+计算并显示两个选定区域的交集区域
+
+'用于返回两个范围的交集
+Sub Intersect交叉区域(r1 As Range, r2 As Range)
+    Dim 单元格对象 As Range
+    On Error Resume Next
+    Set 单元格对象 = Excel.Application.Intersect(r1, r2)
+    On Error GoTo 0
+    If 单元格对象 Is Nothing Then
+        MsgBox "不存在交叉区域", vbExclamation
+    Else
+        MsgBox "交叉区域地址为：" & 单元格对象.Address, vbInformation
+    End If
+    Set 单元格对象 = Nothing
+End Sub
+
+Sub 调用()
+    Dim r1 As Range, r2 As Range
+    On Error Resume Next
+    Set r1 = Application.InputBox("请选择第一个区域：", Type:=8)
+    Set r2 = Application.InputBox("请选择第二个区域：", Type:=8)
+    On Error GoTo 0
+    If r1 Is Nothing Or r2 Is Nothing Then
+        MsgBox "未选择有效区域！", vbExclamation
+        Exit Sub
+    End If
+    Call Intersect交叉区域(r1, r2)
+End Sub
+
+
+Sub 多选单元格()
+    ' 声明变量
+    Dim r1 As Range, r2 As Range
+    Dim ws As Worksheet
+
+    ' 指定工作表（可以修改为目标工作表）
+    Set ws = ThisWorkbook.Worksheets(1)
+    
+    ' 遍历指定区域
+    For Each r1 In ws.Range("A1:G7")
+        If r1.Value = "孙兴华" Then
+            ' 如果r2为空，初始化r2
+            If r2 Is Nothing Then
+                Set r2 = r1
+            Else
+                ' 合并新的单元格到r2
+                Set r2 = Union(r2, r1)
+            End If
+        End If
+    Next r1
+
+    ' 如果找到符合条件的单元格
+    If Not r2 Is Nothing Then
+        r2.Interior.Color = vbRed ' 设置背景色为红色
+        r2.Select ' 选中单元格区域
+    Else
+        MsgBox "未找到符合条件的单元格！", vbExclamation
+    End If
+
+    ' 清理对象
+    Set r1 = Nothing
+    Set r2 = Nothing
+    Set ws = Nothing
+End Sub
+
+
+Sub 添加边框()
+ Dim r1 As Range
+ Set r1 = Range("A1:G7")
+ With r1.Borders
+ '边框线条样式
+ .LineStyle = xlContinuous
+ '边框线条粗细
+ .Weight = xlThin
+ '边框线条颜色
+ .ColorIndex = 5
+ End With
+ '使用BorderAround方法为单元格区域添加一个加粗外框
+ r1.BorderAround xlContinuous, xlMedium, 5
+ Set r1 = Nothing
+End Sub
+
+
+在指定的单元格区域 A1:G7 中，设置内部边框为实线和虚线的组合，同时为整个区域添加一个加粗外框
+
+Sub 外实内虚()
+ Dim r1 As Range
+ Set r1 = Range("A1:G7")
+ With r1.Borders(xlInsideHorizontal) ‘内部水平
+ .LineStyle = xlDot
+ .Weight = xlThin
+ .ColorIndex = 5
+ End With
+ With r1.Borders(xlInsideVertical) ‘内部垂直
+ .LineStyle = xlContinuous
+ .Weight = xlThin
+ .ColorIndex = 5
+ End With
+ r1.BorderAround xlContinuous, xlMedium, 5
+ Set r1 = Nothing
+End Sub
+
+'一次排序可同时指定多个关键字（Key1 和 Key2）
+'每次调用 .Sort 都能处理多个关键字，减少代码运行的次数
+With Range("A1")
+    .Sort Key1:="英语", order1:=xlDescending, _
+          Key2:="语文", order2:=xlDescending, Header:=xlYes
+    .Sort Key1:="数学", order1:=xlDescending, _
+          Key2:="总成绩", order2:=xlDescending, Header:=xlYes
+End With
+
+
+根据 E2:E6 区域中定义的自定义排序顺序，对指定的表格数据按“部门”列进行排序
+
+Sub SortByLists()
+ Dim arr, 序号
+ arr = Range("E2:E6")
+ '通过AddCustomList方法为数组添加自定义序列
+ Excel.Application.AddCustomList arr
+ '返回数组在自定义序列中的序列号，保存在序号这个变量中
+ 序号 = Application.GetCustomListNum(arr)
+ '因为OrderCustom从1开始，如果有一行表头我们就要加1
+'表格包含标题行，标题不会参与排序
+'指定按照自定义排序顺序排列
+ Range("A1").Sort Key1:="部门", Order1:=xlAscending, Header:=xlYes, OrderCustom:=序号 + 1
+ '使用DeleteCustomList删除新添加的自定义序列
+ Application.DeleteCustomList 序号
+End Sub
+
+
+从某张表中筛选出当天生日的人员，并将这些人员的姓名复制到名为 "生日名单" 的工作表中，同时弹出消息框提示
+
+Sub 提醒过生日的人名()
+Dim i
+i = 2: j = 1
+Do While Range("A" & i) <> ""
+'检查当前行的列 C 是否是当天的日期, C 中的日期与当天日期的月份和天数相同，则判定为当天生日
+ If Month(Range("C" & i)) = Month(Date) And Day(Range("C" & i)) = Day(Date) Then
+ MsgBox "今天是" & Range("A" & i) & "的生日"
+ Sheets("生日名单").Range("A" & j) = Range("A" & i)
+ j = j + 1
+ End If
+ i = i + 1
+Loop
+End Sub
