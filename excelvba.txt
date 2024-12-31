@@ -547,3 +547,111 @@ Range("A1").CurrentRegion.Copy Range("K1")
 '取消自动筛选
 Range("A1").CurrentRegion.AutoFilter
 End Sub
+
+
+为了避免在 筛选 过程中触发 Worksheet_Change 事件自身，从而避免递归调用或其他不必要的操作
+'每当工作表中的单元格内容被修改时，Worksheet_Change 事件就会触发
+'Target 是一个 Range 对象，表示发生变化的单元格区域
+Private Sub Worksheet_Change(ByVal Target As Range)
+    '关闭事件,将事件处理功能禁用，防止由于 筛选 操作改变单元格内容时再次触发 Worksheet_Change 事件，避免发生递归调用
+    Excel.Application.EnableEvents = False
+    '因为筛选本身就是修改单元格
+    Call 筛选
+    '打开事件
+    Excel.Application.EnableEvents = True
+End Sub
+为什么使用 EnableEvents = False？
+在 VBA 中，很多操作（如筛选、排序、复制等）会修改单元格内容或其他工作表属性。当这些修改发生时，会触发 Worksheet_Change 等事件。如果不禁用事件，可能会引发递归调用，也就是修改一个单元格内容后，事件再次触发，进而再修改另一个单元格，导致系统陷入无限循环，甚至导致程序崩溃。
+禁用事件处理（EnableEvents = False）是防止这种递归调用的常见做法。通过这种方式，在进行某些操作（如筛选）时，可以避免触发不必要的事件。
+
+
+Worksheet_Change 事件处理程序，用于处理特定单元格的更改操作
+主要涉及以下两种情况：
+当在第 2 列（假定为商品名称）输入数据时，根据输入的商品名称查找对应的商品信息（如价格、库存、销售数量等），并填充相关的单元格。
+当在第 5 列（假定为销售数量）输入数据时，自动计算销售总额，并将结果显示在相邻单元格
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    '同时更改多个单元格时结束执行程序，CountLarge和count功能一样
+    'CountLarge不会溢出，但是count会，xlsx单元格太多了，容易发生数据类型溢出
+'如果被更改的单元格不止一个（例如，用户进行了批量粘贴），则不执行后续代码
+    If Target.CountLarge <> 1 Then Exit Sub
+    '输入数据为空时退出
+    If Target.Value = "" Then Exit Sub
+    '输入行号是第1行时退出,避免影响表头行
+    If Target.Row = 1 Then Exit Sub
+    Dim i
+    '当输入等于第2列时
+    If Target.Column = 2 Then
+        '如果出错了，就是没找到，跳转到标签a
+        On Error GoTo a
+        'Match返回输入的商品名称来自参照表第几行,UCase 用于将输入转换为大写
+        i = Excel.Application.WorksheetFunction.Match(UCase(Target.Value), Range("H:H"), 0)
+        '禁止事件，防止将字母改为商品名称时，再次执行程序
+        Excel.Application.EnableEvents = False
+        With Target
+            .Value = Range("I" & i).Value  '填充商品名称对应的值（如价格等）
+            .Offset(0, -1).Value = Now  '记录当前时间
+            .Offset(0, 1) = Range("J" & i).Value  '填充相关商品信息（如库存）
+            .Offset(0, 2) = Range("K" & i).Value  '填充相关商品信息（如销售数量）
+            '输入商品名称后，选中销售数量的单元格
+            .Offset(0, 3).Select  '将焦点移动到销售数量的单元格
+        End With
+        Excel.Application.EnableEvents = True
+        Exit Sub
+a: MsgBox "没有该商品，请联系维护人员"
+'在当前单元格的基础上，通过 Offset 方法填充相邻的单元格
+        Target.Value = ""  '清空输入的商品名称
+    Else
+'如果修改的是第 5 列（假设为销售数量列），程序会根据销售数量和单价计算销售总额。
+        If Target.Column = 5 Then
+            Application.EnableEvents = False
+'计算销售总额，并将结果放入销售总额所在的单元格。Offset(0, -1) 表示取得销售数量单元格左侧的单价。
+            Target.Offset(0, 1) = Target * Target.Offset(0, -1)  '计算销售总额
+            Cells(Target.Row + 1, 2).Select  '选中下一行的商品名称单元格
+            Application.EnableEvents = True
+        End If
+    End If
+End Sub
+
+
+记录单元格内容的修改历史，并将修改记录保存为批注
+
+'记录被选中单元格的内容，并将其存储为变量 r1。这个变量将用于后续的 Worksheet_Change 事件中，来与修改后的内容进行比较
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+    If Target.Cells.Count <> 1 Then Exit Sub '选中多个单元格时退出程序
+    If Target.Formula = "" Then '根据选中单元格中保存的数据，确定给变量r1赋什么值
+        r1 = "空"
+    Else
+        r1 = Target.Text
+    End If
+End Sub
+
+'记录被修改单元格的内容，并将修改记录添加为批注。批注内容包括修改前的内容、修改后的内容以及修改的时间。
+Private Sub Worksheet_Change(ByVal Target As Range)
+    If Target.Cells.Count <> 1 Then Exit Sub
+    '定义变量保存单元格修改后的内容
+    Dim r2
+    '判断单元格是否被修改为空单元格
+    If Target.Formula = "" Then
+        r2 = "空"
+    Else
+        r2 = Target.Formula
+    End If
+    '如果单元格修改前后的内容一样则退出程序
+    If r1 = r2 Then Exit Sub
+    '定义一个批注变量
+    Dim r3
+    '定义一个变量保存批注内容
+    Dim r4
+    '将被修改单元格的批注赋给变量r3
+'获取目标单元格的批注对象。如果单元格没有批注，则使用 Target.AddComment 创建一个新的批注
+    Set r3 = Target.Comment
+    '如果单元格中没有批注则新建批注
+    If r3 Is Nothing Then Target.AddComment
+    '将批注的内容保存到变量r4中
+    r4 = Target.Comment.Text
+    '重新修改批注的内容=原批注内容+当前日期和时间+原内容+修改后的新内容
+    Target.Comment.Text Text:=r4 & Chr(10) & Format(Now(), "yyyy-mm-dd hh:mm") & "原内容:" & r1 & "修改为:" & r2
+    '根据批注内容自动调整批注大小
+    Target.Comment.Shape.TextFrame.AutoSize = True
+End Sub
