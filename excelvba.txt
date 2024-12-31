@@ -533,3 +533,17 @@ Do While Range("A" & i) <> ""
  i = i + 1
 Loop
 End Sub
+
+
+对表格数据进行筛选，筛选条件是第 2 列等于单元格 H2 的值，并将筛选结果复制到单元格 K1 开始的位置
+
+Sub 筛选()
+'以单元格 K1 为起始点的连续数据区域,清空该区域的所有内容和格式
+Range("K1").CurrentRegion.Clear
+'筛选这个区域内第2列，等于H2单元格的名字
+Range("A1").CurrentRegion.AutoFilter field:=2, Criteria1:=Range("H2")
+'将这个区域复制到K1单元格
+Range("A1").CurrentRegion.Copy Range("K1")
+'取消自动筛选
+Range("A1").CurrentRegion.AutoFilter
+End Sub
