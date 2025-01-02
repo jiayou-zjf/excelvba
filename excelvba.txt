@@ -655,3 +655,304 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     '根据批注内容自动调整批注大小
     Target.Comment.Shape.TextFrame.AutoSize = True
 End Sub
+
+
+每隔 10 秒自动保存一次当前工作簿
+
+Sub otime()
+ '10秒后自动运行WbSave过程
+' Now() + TimeValue("00:00:10")当前时间加上 10 秒后的时间
+'"WbSave": 指定在设置的时间触发的过程
+ Application.OnTime Now() + TimeValue("00:00:10"), "WbSave"
+End Sub
+Sub WbSave()
+ ThisWorkbook.Save '保存本工作簿
+ Call otime '再次运行otime过程
+End Sub
+
+打开工作簿立刻运行自动保存，通过输入框让用户设置时间间隔
+
+为了让工作簿打开就自动运行：
+Private Sub Workbook_Open()
+Call otime
+End Sub
+Sub otime()
+    Dim interval As String
+    On Error Resume Next ' 防止用户输入错误导致代码中断
+    interval = InputBox("请输入保存间隔时间 (格式：hh:mm:ss)", "设置间隔", "00:00:10")
+    On Error GoTo 0
+    ' 检查用户是否取消输入或输入为空
+    If interval = "" Then
+        MsgBox "操作已取消。", vbInformation
+        Exit Sub
+    End If
+    ' 验证时间格式
+'使用 IsDate 检测用户输入的时间格式是否有效
+    If IsDate(interval) Then
+        Application.OnTime Now() + TimeValue(interval), "WbSave"
+    Else
+        MsgBox "输入的时间格式无效，请输入正确的时间格式 (如：00:00:10)。", vbExclamation
+    End If
+End Sub
+
+Sub WbSave()
+    On Error Resume Next ' 防止保存失败导致错误
+    ThisWorkbook.Save ' 保存本工作簿
+    On Error GoTo 0
+    Call otime ' 再次运行otime过程
+End Sub
+
+
+Sub a()
+Dim i, w1, arr
+Set w2 = ActiveWorkbook
+Set s2 = ActiveSheet
+'调用 GetOpenFilename 显示文件选择对话框
+'限制只能选择扩展名为 .xls 或 .xlsx 的文件
+arr = Excel.Application.GetOpenFilename("Excel文件,*.xls*", MultiSelect:=True)
+If IsArray(arr) Then
+ For i = LBound(arr) To UBound(arr)
+ Set w1 = Workbooks.Open(arr(i))
+ For Each s1 In w1.Sheets
+ s1.Copy after:=w2.Sheets(w2.Sheets.Count)
+'使用 Split 将文件名按 . 分割，取分割后的第一个部分（即文件名）
+ w2.Sheets(w2.Sheets.Count).Name = Split(w1.Name, ".")(0) & s1.Name
+w1.Close
+ Next
+ Next
+End If
+End Sub
+
+两个单选框控件 (xb1 和 xb2) 的交互功能，用户可以通过点击单选框在单元格 D1 中显示性别，并确保只有一个单选框被选中
+
+Private Sub UserForm_Initialize()
+    ' 设置初始化状态
+    xb1.Value = True
+    Range("D1").Value = "男"
+End Sub
+
+'用于更新性别的值，并实现单选框的互斥选择
+Private Sub UpdateGender(selectedBox As Object, otherBox As Object, gender As String)
+    ' 更新性别逻辑
+'If selectedBox.Value = True Then检查当前选择的单选框是否被选中
+    If selectedBox.Value = True Then
+        Range("D1").Value = gender
+        otherBox.Value = False
+        MsgBox "当前选择：" & gender, vbInformation, "性别选择"
+    End If
+End Sub
+
+Private Sub xb1_Click()
+    ' 男单选框的点击事件
+    UpdateGender xb1, xb2, "男"
+End Sub
+
+Private Sub xb2_Click()
+    ' 女单选框的点击事件
+    UpdateGender xb2, xb1, "女"
+End Sub
+
+
+用户通过输入原密码、新密码以及确认密码来修改密码。如果输入的原密码正确且新密码输入不为空且两次输入的密码相同，则修改密码并保存工作簿
+Private Sub 更改密码_Click()
+Dim 原密码
+‘获取工作簿中名为 "用户密码" 的命名区域的值，即存储当前密码的名称。’
+k = Names("用户密码").RefersTo
+原密码 = InputBox("请输入原密码：", "提示")
+'判断原密码是否正确
+'Ctr是假定存在的一个函数，可能是对 原密码 进行某种验证或加密处理的函数
+If Ctr(原密码) <> Evaluate(k) Then
+ MsgBox "原密码输入错误，不能修改！", vbCritical, "错误"
+ Exit Sub
+End If
+新密码1 = InputBox("请输入新密码:", "提示")
+'判断新密码是否为空
+If 新密码1 = "" Then
+ MsgBox "新密码不能为空，修改没有完成！", vbCritical, "错误"
+ Exit Sub
+End If
+新密码2 = InputBox("请再次输入新密码：", "提示")
+'判断两次输入的亲密码是否相同
+If 新密码1 = 新密码2 Then
+ k = "=" & 新密码1
+ ThisWorkbook.Save
+ MsgBox "密码修改完成，下次登录请使用新密码！", vbInformation, "提示"
+Else
+ MsgBox "两次输入的密码不一致，修改没有完成！", vbCritical, "错误"
+End If
+End Sub
+
+如何使用正则表达式（RegExp）在 Excel 中进行字符串的匹配、提取和替换
+
+Sub RegExpDemoSyntax()
+ Dim 正则, 结果集合, 结果
+ 字符串 = Range("A2").Value
+ '给对象指定正则表达式对象
+ 'CreateObject函数用于创建各种外部对象，对象的完整名称就是参数
+ Set 正则 = CreateObject("vbscript.regexp")
+ 'Pattern后面写正则表达式
+'匹配以 Name: 开头的字符串，后面接任意字符
+'再匹配以 Phone: 开头的字符串，后面接数字
+ 正则.Pattern = "Name:(.*?),Phone:(\d+)"
+ 'Global值为True返回所有符合要求的结果，反之只返回第一个符合要求的结果
+ 正则.Global = True
+ 'Execute(字符串)
+ Set 结果集合 = 正则.Execute(字符串)
+ If 结果集合.Count > 0 Then
+ i = 2
+ For Each 结果 In 结果集合
+ Range("B" & i) = 结果.submatches(0)
+ Range("C" & i) = 结果.submatches(1)
+ Range("D" & i) = 正则.Replace(字符串, "$1$2")
+ i = i + 1
+ Next
+ End If
+set 结果集合 = Nothing
+ Set 正则 = Nothing
+End Sub
+
+
+通过正则表达式对公式进行解析和替换，主要用于在 Excel 中处理带有表名和单元格引用的公式
+
+Sub RegExpDemoReplace()
+ Dim 正则, i
+ '使用后期绑定正则对象
+ Set 正则 = CreateObject("vbscript.regexp")
+ '正则表达式
+'非 ! 的任意字符
+'匹配 1 到 3 个大写字母（列标），后跟 1 到 6 个数字（行号）
+ 正则.Pattern = "[^!]([A-Z]{1,3}\d{1,6})"
+ 正则.Global = True
+ i = 1
+ Do While Range("A" & i) <> ""
+ '在公式前添加一个空格，确保第一个单元格引用可以被正则匹配成功
+ 公式 = " " & Range("B" & i)
+ 表名 = Range("A" & i) & "!"
+ Set 结果集合 = 正则.Execute(公式)
+ '成功匹配的对象（字符组）数目
+ If 结果集合.Count > 0 Then
+ For j = 1 To 结果集合.Count
+'提取捕获组中的内容，即匹配到的单元格引用
+ 单元格 = 结果集合(j - 1).submatches(0)
+ 公式 = Replace(公式, 单元格, 表名 & 单元格)
+ Next
+Range("C" & i) = Trim(公式)
+ End If
+ i = i + 1
+ Loop
+ Set 正则 = Nothing
+ Set 结果集合 = Nothing
+End Sub
+
+
+单元格内容中移除以 * 结尾的数字,对清理后的字符串作为公式进行计算,将计算结果存储在当前行右侧的列中
+Sub RegExpDemo()
+ Dim 正则
+ '使用后期绑定创建正则对象
+ Set 正则 = CreateObject("vbscript.regexp")
+ '指定正则匹配字符串
+'匹配以 * 结尾的数字
+ 正则.Pattern = "\d+\*"
+ '设置为全局搜索模式
+ 正则.Global = True
+'遍历列 B 中的非空单元格，从 B2 开始到列 B 的最后一行
+'定位列 B 的最后一个非空单元格
+ For Each 单元格 In Range([B2], Cells(Rows.Count, "B").End(xlUp))
+'去除单元格值前后空格
+'将匹配到的以 * 结尾的数字替换为空字符串（即删除）
+ 新字符串 = 正则.Replace(Trim(单元格.Value), "")
+'计算清理后的字符串作为公式的结果,将结果写入当前单元格右侧的单元格
+ 单元格.Offset(0, 1).Value = Application.Evaluate(新
+字符串)
+Next
+ Set 正则 = Nothing
+End Sub
+
+
+提取日期和金额
+
+Sub ExtractDateAndAmount()
+    Dim 正则 As Object, i As Long
+    Dim 结果集合 As Object, 字符串 As String
+
+    ' 初始化正则表达式对象
+    Set 正则 = CreateObject("vbscript.regexp")
+'匹配日期格式,匹配金额格式
+    正则.Pattern = "(\d{4}-\d{2}-\d{2}|\d{4}.\d{2}.\d{2}).*?(([A-Z]{3})*\d+[\d.,]*元)"
+    正则.Global = True
+
+    i = 2
+    Do While Range("A" & i) <> ""
+        字符串 = Range("A" & i).Value
+'对当前单元格的字符串进行匹配，并将结果存储到 结果集合 中
+        Set 结果集合 = 正则.Execute(字符串)
+        
+        If 结果集合.Count > 0 Then
+            Range("B" & i) = 结果集合(0).submatches(0)
+            Range("C" & i) = 结果集合(0).submatches(1)
+        Else
+            Range("B" & i) = "无匹配"
+            Range("C" & i) = "无匹配"
+        End If
+        
+        i = i + 1
+    Loop
+
+    ' 释放对象
+    Set 正则 = Nothing
+    Set 结果集合 = Nothing
+End Sub
+
+
+
+Sub ExtractChineseCharacters()
+    Dim 正则 As Object
+    Dim 单元格 As Range
+    Dim 字符串 As String
+
+    ' 初始化正则表达式对象
+    Set 正则 = CreateObject("vbscript.regexp")
+'[^...] 表示取反，即匹配 非汉字字符
+    正则.Pattern = "[^一-龥]" ' 匹配非汉字字符
+    正则.Global = True
+
+    ' 遍历列 A 中的所有单元格
+    For Each 单元格 In Range([A2], Cells(Rows.Count, 1).End(xlUp))
+'去除单元格值两端的空格
+        字符串 = Trim(单元格.Value)
+'替换 字符串 中的所有非汉字字符为空字符串，即提取出纯汉字
+        单元格.Offset(0, 1).Value = 正则.Replace(字符串, "") ' 提取汉字并写入列 B
+    Next
+
+    ' 释放对象
+    Set 正则 = Nothing
+End Sub
+
+
+从一个字典对象中读取数据并填充到指定的查询结果区域
+Sub 从字典中读取数据()
+Dim 字典, arr, brr
+Set 字典 = CreateObject("Scripting.Dictionary")
+arr = Range("A1").CurrentRegion
+'对字典里的每个key赋值
+For i = 2 To UBound(arr)
+'将主数据区域中的第一列作为键，第二列作为值存入字典
+ 字典(arr(i, 1)) = arr(i, 2)
+Next
+'查询区域
+brr = Range("D1:E" & Cells(Rows.Count, 
+"D").End(xlUp).Row)
+For i = 2 To UBound(brr)
+ '如果字典存在Key值
+'判断查询区域中的值是否存在于字典的键中
+ If 字典.Exists(brr(i, 1)) Then
+ '获取人名对应的条目，分数那列等于人名那列的item
+ brr(i, 2) = 字典(brr(i, 1))
+ Else
+ brr(i, 2) = "查无此人"
+ End If
+Next
+Range("D1:E" & Cells(Rows.Count, "D").End(xlUp).Row) 
+= brr
+Set 字典 = Nothing
+End Sub
